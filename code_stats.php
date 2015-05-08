@@ -1,101 +1,154 @@
 <?php
 /**
- * A very simple stats counter for all kind of stats about a development folder
- * 
- * @author Joel Lord
- * @copyright Engrenage (www.engrenage.biz)
- * 
- * For more information: joel@engrenage.biz
-
+ * A very simple code analysis stored in a single php file.
+ *
+ * Edit file_types and skip_directories to meet your needs.
  */
 
+// Variables. Change these to meet your needs.
+$file_types = array('php','js','scss');
+$skip_directories = array('.git', 'files', 'external', 'scripts');
 
-$fileCounter = array();
-$totalLines = countLines('.', $fileCounter); 
-echo $totalLines." lines in the current folder<br>";
-echo $totalLines - $fileCounter['gen']['commentedLines'] - $fileCounter['gen']['blankLines'] ." actual lines of code (not a comment or blank line)<br><br>";
+// Initialize.
+$stats = array();
+$stats['gen'] = array();
+$stats['gen']['commented_lines'] = 0;
+$stats['gen']['blank_lines'] = 0;
+$stats['gen']['comment_blocks'] = 0;
+$stats['gen']['classes'] = 0;
+$stats['gen']['functions'] = 0;
+$stats['included_files'] = array();
+$stats['excluded_files'] = array();
+$stats['skip'] = $skip_directories;
+$stats['file_types'] = '(' . implode('|', $file_types) . ')';
 
-foreach($fileCounter['gen'] as $key=>$val) {
-    echo ucfirst($key).":".$val."<br>";
+// Execute.
+$totalLines = countLines('../', $stats);
+
+// Print results.
+echo 'Total lines: ' . $totalLines . '<br />';
+echo 'Adjusted lines (without comments or empty lines): ' . ($totalLines - $stats['gen']['commented_lines'] - $stats['gen']['blank_lines']) . '<br />';
+foreach($stats['gen'] as $key=>$val)
+{
+  echo ucfirst($key) . ": " . $val . "<br>";
 }
 
-echo "<br>";
-
-foreach($fileCounter as $key=>$val) {
-    if(!is_array($val)) echo strtoupper($key).":".$val." file(s)<br>";
+echo "<br />";
+echo 'Included Files (' . count($stats['included_files']) . '): <br />';
+foreach($stats['included_files'] as $file_name)
+{
+  echo $file_name . '<br />';
 }
 
+echo "<br />";
+echo 'Excluded Files & Directories (' . count($stats['excluded_files']) . '): <br />';
+foreach($stats['excluded_files'] as $file_name)
+{
+  echo $file_name . '<br />';
+}
 
+function countLines($dir, &$stats)
+{
+  $lineCounter = 0;
+  $dirHandle = opendir($dir);
+  $path = realpath($dir);
+  $nextLineIsComment = false;
 
+  if($dirHandle)
+  {
+    while($file = readdir($dirHandle))
+    {
+      if(is_dir($path."/".$file) && ($file !== '.' && $file !== '..') && !in_array($file, $stats['skip']))
+      {
+        $lineCounter += countLines($path . '/' . $file, $stats);
+      }
+      elseif(in_array($file, $stats['skip']))
+      {
+        $stats['excluded_files'][] = $path . '/' . $file;
+      }
+      elseif($file !== '.' && $file !== '..')
+      {
 
-function countLines($dir, &$fileCounter) {
-    $_allowedFileTypes = "(html|htm|phtml|php|js|css|ini)";
-    $lineCounter = 0;
-    $dirHandle = opendir($dir);
-    $path = realpath($dir);
-    $nextLineIsComment = false;
+        // Check if we have a valid file
+        $ext = _findExtension($file);
+        if(preg_match("/" . $stats['file_types'] . "$/i", $ext))
+        {
+          $realFile = realpath($path)."/".$file;
+          $fileArray = file($realFile);
 
-    if($dirHandle) {
-        while(false !== ($file = readdir($dirHandle))) {
-            if(is_dir($path."/".$file) && ($file !== '.' && $file !== '..')) {
-                $lineCounter += countLines($path."/".$file, $fileCounter);
-            } elseif($file !== '.' && $file !== '..') {
-                //Check if we have a valid file 
-                $ext = _findExtension($file);
-                if(preg_match("/".$_allowedFileTypes."$/i", $ext)) {
-                    $realFile = realpath($path)."/".$file;
-                    $fileHandle = fopen($realFile, 'r');
-                    $fileArray = file($realFile);
-                    //Check content of file:
-                    for($i=0; $i<count($fileArray); $i++) {
-                        if($nextLineIsComment) {
-                            $fileCounter['gen']['commentedLines']++;
-                            //Look for the end of the comment block
-                            if(strpos($fileArray[$i], '*/')) {
-                                $nextLineIsComment = false;
-                            }
-                        } else {
-                            //Look for a function
-                            if(strpos($fileArray[$i], 'function')) {
-                                $fileCounter['gen']['functions']++;
-                            }
-                            //Look for a commented line
-                            if(strpos($fileArray[$i], '//')) {
-                                $fileCounter['gen']['commentedLines']++;
-                            }
-                            //Look for a class
-                            if(substr(trim($fileArray[$i]), 0, 5) == 'class') {
-                                $fileCounter['gen']['classes']++;
-                            }
-                            //Look for a comment block
-                            if(strpos($fileArray[$i], '/*')) {
-                                $nextLineIsComment = true;
-                                $fileCounter['gen']['commentedLines']++;
-                                $fileCounter['gen']['commentBlocks']++;
-                            }
-                            //Look for a blank line
-                            if(trim($fileArray[$i]) == '') {
-                                $fileCounter['gen']['blankLines']++;
-                            }
-                        }
-
-                    }
-                    $lineCounter += count($fileArray);
-                }
-                //Add to the files counter
-                $fileCounter['gen']['totalFiles']++;
-                $fileCounter[strtolower($ext)]++;
+          // Check content of file:
+          for($i=0; $i<count($fileArray); $i++)
+          {
+            if($nextLineIsComment)
+            {
+              $stats['gen']['commented_lines']++;
+              // Look for the end of the comment block
+              if(strpos($fileArray[$i], '*/'))
+              {
+                $nextLineIsComment = false;
+              }
             }
-        }
-    } else echo 'Could not enter folder';
+            else
+            {
 
-    return $lineCounter;
+              // Look for a function
+              if(strpos($fileArray[$i], 'function'))
+              {
+                $stats['gen']['functions']++;
+              }
+
+              // Look for a commented line
+              if(strpos($fileArray[$i], '//'))
+              {
+                $stats['gen']['commented_lines']++;
+              }
+
+              // Look for a class
+              if(substr(trim($fileArray[$i]), 0, 5) == 'class')
+              {
+                $stats['gen']['classes']++;
+              }
+
+              // Look for a comment block
+              if(strpos($fileArray[$i], '/*'))
+              {
+                $nextLineIsComment = true;
+                $stats['gen']['commented_lines']++;
+                $stats['gen']['comment_blocks']++;
+              }
+
+              //Look for a blank line
+              if(trim($fileArray[$i]) == '')
+              {
+                $stats['gen']['blank_lines']++;
+              }
+            }
+          }
+          $lineCounter += count($fileArray);
+
+          // Mark as an included file.
+          $stats['included_files'][] = $path . '/' . $file;
+        }
+        else
+        {
+          $stats['excluded_files'][] = $path . '/' . $file;
+        }
+      }
+    }
+  }
+  else
+  {
+    echo 'Could not enter folder: ' . $dir;
+  }
+
+  return $lineCounter;
 }
 
-function _findExtension($filename) {
-    $filename = strtolower($filename) ; 
-    $exts = split("[/\\.]", $filename) ; 
-    $n = count($exts)-1; 
-    $exts = $exts[$n]; 
-    return $exts;  
+function _findExtension($filename)
+{
+  $filename = strtolower($filename) ;
+  $exts = preg_split("[/\\.]", $filename) ;
+  $n = count($exts)-1;
+  $exts = $exts[$n];
+  return $exts;
 }
