@@ -29,6 +29,7 @@ Known bugs
 
 Example Output:
 
+<pre>
 Total lines: 55674
 Adjusted lines: 33853
 Commented_lines: 5268
@@ -51,3 +52,4 @@ C:\Sites\scheduler.local/.git
 C:\Sites\scheduler.local/.gitignore
 C:\Sites\scheduler.local/.htaccess
 C:\Sites\scheduler.local\.idea/.name
+</pre>
