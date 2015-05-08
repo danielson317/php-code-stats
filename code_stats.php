@@ -2,14 +2,15 @@
 /**
  * A very simple code analysis stored in a single php file.
  *
- * Edit file_types and skip_directories to meet your needs.
+ * Edit The variables just below to customize to your needs.
  */
 
 // Variables. Change these to meet your needs.
 $file_types = array('php','js','scss');
 $skip_directories = array('.git', 'files', 'external', 'scripts');
+$starting_directory = '../';
 
-// Initialize.
+// Initialize. No need to change anything below this line.
 $stats = array();
 $stats['gen'] = array();
 $stats['gen']['commented_lines'] = 0;
@@ -23,7 +24,7 @@ $stats['skip'] = $skip_directories;
 $stats['file_types'] = '(' . implode('|', $file_types) . ')';
 
 // Execute.
-$totalLines = countLines('../', $stats);
+$totalLines = countLines($starting_directory, $stats);
 
 // Print results.
 echo 'Total lines: ' . $totalLines . '<br />';
