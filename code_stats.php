@@ -15,6 +15,7 @@ $stats = array();
 $stats['gen'] = array();
 $stats['gen']['commented_lines'] = 0;
 $stats['gen']['blank_lines'] = 0;
+$stats['gen']['bracket_lines'] = 0;
 $stats['gen']['comment_blocks'] = 0;
 $stats['gen']['classes'] = 0;
 $stats['gen']['functions'] = 0;
@@ -28,7 +29,7 @@ $totalLines = countLines($starting_directory, $stats);
 
 // Print results.
 echo 'Total lines: ' . $totalLines . '<br />';
-echo 'Adjusted lines (without comments or empty lines): ' . ($totalLines - $stats['gen']['commented_lines'] - $stats['gen']['blank_lines']) . '<br />';
+echo 'Adjusted lines: ' . ($totalLines - $stats['gen']['commented_lines'] - $stats['gen']['blank_lines'] - $stats['gen']['bracket_lines']) . '<br />';
 foreach($stats['gen'] as $key=>$val)
 {
   echo ucfirst($key) . ": " . $val . "<br>";
@@ -99,7 +100,7 @@ function countLines($dir, &$stats)
               }
 
               // Look for a commented line
-              if(strpos($fileArray[$i], '//'))
+              if(strpos(trim($fileArray[$i]), '//') === 0)
               {
                 $stats['gen']['commented_lines']++;
               }
@@ -122,6 +123,12 @@ function countLines($dir, &$stats)
               if(trim($fileArray[$i]) == '')
               {
                 $stats['gen']['blank_lines']++;
+              }
+
+              // Look for lines that have an open or close bracket and nothing else.
+              if (trim($fileArray[$i]) == '{' || trim($fileArray[$i]) == '}')
+              {
+                $stats['gen']['bracket_lines']++;
               }
             }
           }
